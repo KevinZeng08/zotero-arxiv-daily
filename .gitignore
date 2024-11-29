@@ -10,3 +10,9 @@ wheels/
 .venv
 
 test.ipynb
+
+# VSCode
+.vscode
+
+# Environment variables
+.env

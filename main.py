@@ -12,10 +12,14 @@ from email.header import Header
 from email.mime.text import MIMEText
 from email.utils import parseaddr, formataddr
 import smtplib
-from tldr import get_paper_tldr
-from llama_cpp import Llama
+from tldr_backend import LLMBackend
 from tqdm import tqdm
 from loguru import logger
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MODEL_DIR = "/home/zbw/model_zoo"
 
 def get_zotero_corpus(id:str,key:str) -> list[dict]:
     zot = zotero.Zotero(id, 'user', key)
@@ -123,6 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('--sender', type=str, help='Sender email address',default=os.environ.get('SENDER'))
     parser.add_argument('--receiver', type=str, help='Receiver email address',default=os.environ.get('RECEIVER'))
     parser.add_argument('--password', type=str, help='Sender email password',default=os.environ.get('SENDER_PASSWORD'))
+    parser.add_argument('--model', type=str, help='Model name',default=os.environ.get('MODEL'))
     parser.add_argument('--debug', action='store_true', help='Debug mode')
     args = parser.parse_args()
     assert args.zotero_id is not None
@@ -147,15 +152,9 @@ if __name__ == '__main__':
         papers = papers[:args.max_paper_num]
     
     logger.info("Generating TLDRs...")
-    llm = Llama.from_pretrained(
-        repo_id="Qwen/Qwen2.5-3B-Instruct-GGUF",
-        filename="qwen2.5-3b-instruct-q4_k_m.gguf",
-        n_ctx=4096,
-        n_threads=4,
-        verbose=False
-    )
+    llm = LLMBackend.get_backend("vllm", f"{MODEL_DIR}/{args.model}", tensor_parallel_size=4)
     for p in tqdm(papers):
-        p.tldr = get_paper_tldr(p, llm)
+        p.tldr = llm.get_paper_tldr(p)
 
     html = render_email(papers)
     logger.info("Sending email...")

@@ -38,35 +38,3 @@ def get_paper_summary(paper:arxiv.Result) -> str:
                     conclusion = match.group(0)
                 
     return introduction, conclusion
-
-def get_paper_tldr(paper:arxiv.Result, model:Llama) -> str:
-    try:
-        introduction, conclusion = get_paper_summary(paper)
-    except:
-        introduction, conclusion = "", ""
-    prompt = """Given the title, abstract, introduction and the conclusion (if any) of a paper in latex format, generate a one-sentence TLDR summary:
-    
-    \\title{__TITLE__}
-    \\begin{abstract}__ABSTRACT__\\end{abstract}
-    __INTRODUCTION__
-    __CONCLUSION__
-    """
-    prompt = prompt.replace('__TITLE__', paper.title)
-    prompt = prompt.replace('__ABSTRACT__', paper.summary)
-    prompt = prompt.replace('__INTRODUCTION__', introduction)
-    prompt = prompt.replace('__CONCLUSION__', conclusion)
-    prompt_tokens = model.tokenize(prompt.encode('utf-8'))
-    prompt_tokens = prompt_tokens[:3800] # truncate to 3800 tokens
-    prompt = model.detokenize(prompt_tokens).decode('utf-8')
-    response = model.create_chat_completion(
-        messages=[
-          {"role": "system", "content": "You are an assistant who perfectly summarizes scientific paper, and gives the core idea of the paper to the user."},
-          {
-              "role": "user",
-              "content": prompt
-            }
-        ],
-        top_k=0,
-        temperature=0
-    )
-    return response['choices'][0]['message']['content']
