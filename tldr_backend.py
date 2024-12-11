@@ -1,10 +1,12 @@
 import time
+import os
 import socket
 import arxiv
 from loguru import logger
 from llama_cpp import Llama
 from abc import ABC, abstractmethod
 from tldr import get_paper_summary
+from utils import select_gpu_with_max_free_memory
 from openai import OpenAI
 
 class LLMBackend(ABC):
@@ -73,10 +75,18 @@ class VLLMBackend(LLMBackend):
 
         cmd = ["vllm", "serve", model_path, "--dtype", "auto"]
 
+        num_gpus = 1
         for key, value in kwargs.items():
             key = f"--{key.replace('_', '-')}"
-            cmd.extend([key, str(value)])
+            if key == "--tensor-parallel-size" or key == "--pipeline-parallel-size":
+                cmd.extend([key, str(value)])
+                num_gpus = num_gpus * value
 
+        selected_gpus = select_gpu_with_max_free_memory(num_gpus)
+        logger.info(f"vLLM Server Selected GPUs: {selected_gpus}")
+
+        os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, selected_gpus))
+        
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # retry until the server is running

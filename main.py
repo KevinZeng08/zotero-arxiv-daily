@@ -152,7 +152,7 @@ if __name__ == '__main__':
         papers = papers[:args.max_paper_num]
     
     logger.info("Generating TLDRs...")
-    llm = LLMBackend.get_backend("vllm", f"{MODEL_DIR}/{args.model}", tensor_parallel_size=4)
+    llm = LLMBackend.get_backend("vllm", f"{args.model}", tensor_parallel_size=4)
     for p in tqdm(papers):
         p.tldr = llm.get_paper_tldr(p)
 
